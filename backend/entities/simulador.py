@@ -182,10 +182,10 @@ class Simulador:
             round(self.reloj_dia, 2),
             self.evento_actual,
             self.rnd_str,
-            "-" if self.evento_actual != "Llegada Cliente" else "Calculado", # TEL temporal
+            "-" if self.evento_actual != "Llegada Cliente" else self.t_llegada_str, # TEL temporal
             p_lleg,
-            "-" if self.evento_actual != "Llegada Cliente" else "Calculado", # RND preferencia temporal
-            "-" if self.evento_actual != "Llegada Cliente" else "Calculado", # preferencia temporal
+            "-" if self.evento_actual != "Llegada Cliente" else self.rnd_pref_str, # RND preferencia temporal
+            "-" if self.evento_actual != "Llegada Cliente" else self.pref_str, # preferencia temporal
             str(self.aprendiz), f_ap,
             str(self.veterano_a), f_va,
             str(self.veterano_b), f_vb,
