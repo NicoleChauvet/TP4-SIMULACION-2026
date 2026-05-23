@@ -67,7 +67,7 @@ class Simulador:
         # Guardar la fila inicial (Fila 0 o Inicialización)
         self.registrar_fila()
 
-        # ================== BUCLE DE EVENTOS ==================
+        # 2. Bucle principal de simulación: se ejecuta hasta completar los días o el tiempo máximo global
         while self.dia_actual <= self.N_dias and self.reloj <= self.X_tiempo:
             reloj_anterior = self.reloj_dia
             
@@ -95,15 +95,20 @@ class Simulador:
 
             self.rnd_str = "-"
 
-            # ================== LÓGICA ESPECÍFICA DE PROCESAMIENTO ==================
+            # Procesar el evento actual según su tipo
             if self.evento_actual == 'Llegada Cliente':
                 if self.reloj_dia < self.duracion_dia:
                     rnd_lleg, t_lleg = generar_uniforme(2, 12)
                     self.prox_llegada = self.reloj_dia + t_lleg
                     self.rnd_str = str(rnd_lleg)
+                    self.t_llegada_str = str(t_lleg)
                 
                 nuevo_cliente = Cliente(self.id_cliente, self.reloj_dia, self.tiempo_tolerancia)
                 self.id_cliente += 1
+
+                # guardamos el rnd y preferencia del cliente para mostrar en la tabla de eventos del 
+                self.rnd_pref_str = str(nuevo_cliente.rnd_preferencia)
+                self.pref_str = nuevo_cliente.preferencia
                 
                 # Buscar el peluquero correspondiente según su preferencia instanciada
                 peluquero_objetivo = None
@@ -141,7 +146,7 @@ class Simulador:
                 if self.dia_actual <= self.N_dias:
                     self.inicializar_dia()
 
-            # ================== DISPARADOR DE REGISTRO CSV (Filtro i, j) ==================
+            # Control de iteraciones a mostrar y registro de fila en CSV
             es_ultima_fila = (self.dia_actual > self.N_dias) or (self.reloj > self.X_tiempo)
             
             if (self.reloj >= self.j_minuto and self.iteraciones_mostradas < self.i_iteraciones) or es_ultima_fila:
@@ -188,5 +193,5 @@ class Simulador:
             self.total_abandonos
         ]
         
-        # Llamamos a nuestro módulo independiente de persistencia
+        # Llamamos a la función para agregar esta fila al CSV
         agregar_fila_csv(self.archivo_csv, datos_fila)
