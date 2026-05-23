@@ -4,7 +4,7 @@ class Cliente:
     def __init__(self, id_cliente, reloj, tiempo_tolerancia):
         self.id_cliente = id_cliente
         self.reloj = reloj
-        self.tiempo_tolerancia = tiempo_tolerancia
+        self.hora_abandono = reloj + tiempo_tolerancia
 
         # cuando se crea un cliente se define la preferencia del mismo
         rnd_preferencia = round(random.random(),4)
