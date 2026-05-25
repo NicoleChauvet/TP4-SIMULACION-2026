@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador · Peluquería Centro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div class="bg-grid"></div>
+
+    <header>
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-icon">✂</span>
+                <div>
+                    <div class="logo-title">Peluquería Centro</div>
+                    <div class="logo-sub">Simulador de Colas · TP Simulación</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- PANEL DE PARÁMETROS -->
+        <section class="params-panel" id="paramsPanel">
+            <div class="panel-header">
+                <span class="panel-tag">01</span>
+                <h2>Parámetros de simulación</h2>
+            </div>
+
+            <div class="form-grid">
+                <div class="field-group">
+                    <label for="N">
+                        <span class="field-key">N</span>
+                        Días a simular
+                    </label>
+                    <input type="number" id="N" min="1" step="1" placeholder="ej: 5" />
+                    <span class="field-hint">Cantidad de jornadas laborales</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="X">
+                        <span class="field-key">X</span>
+                        Tiempo máximo <span class="unit">(min)</span>
+                    </label>
+                    <input type="number" id="X" min="1" step="1" placeholder="ej: 2400" />
+                    <span class="field-hint">Límite global de la simulación en minutos</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="i">
+                        <span class="field-key">i</span>
+                        Iteraciones a mostrar
+                    </label>
+                    <input type="number" id="i" min="1" step="1" placeholder="ej: 100" />
+                    <span class="field-hint">Filas consecutivas visibles en la tabla</span>
+                </div>
+
+                <div class="field-group">
+                    <label for="j">
+                        <span class="field-key">j</span>
+                        Desde el minuto <span class="unit">(min)</span>
+                    </label>
+                    <input type="number" id="j" min="0" step="0.1" placeholder="ej: 0" />
+                    <span class="field-hint">Minuto absoluto desde el que se registra</span>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn-primary" id="btnSimular" onclick="ejecutarSimulacion()">
+                    <span class="btn-icon">▶</span>
+                    Ejecutar simulación
+                </button>
+            </div>
+        </section>
+
+        <!-- SPINNER -->
+        <div class="spinner-wrap" id="spinnerWrap" style="display:none">
+            <div class="spinner"></div>
+            <p>Simulando jornadas<span class="dots"></span></p>
+        </div>
+
+        <!-- ERROR -->
+        <div class="error-box" id="errorBox" style="display:none">
+            <span class="error-icon">⚠</span>
+            <span id="errorMsg"></span>
+        </div>
+
+        <!-- RESULTADOS -->
+        <section class="results-panel" id="resultsPanel" style="display:none">
+            <div class="results-header">
+                <div class="panel-header">
+                    <span class="panel-tag">02</span>
+                    <h2>Vector de estados</h2>
+                </div>
+                <div class="results-meta" id="resultsMeta"></div>
+                <button class="btn-secondary" id="btnDescargar" onclick="descargarCSV()">
+                    <span class="btn-icon">↓</span>
+                    Descargar CSV
+                </button>
+            </div>
+
+            <div class="table-hint">
+                💡 Podés seleccionar filas y copiar con <kbd>Ctrl+C</kbd> para pegar directo en Excel
+            </div>
+
+            <div class="table-wrapper" id="tableWrapper">
+                <table id="tablaResultados">
+                    <thead id="tablaHead"></thead>
+                    <tbody id="tablaBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

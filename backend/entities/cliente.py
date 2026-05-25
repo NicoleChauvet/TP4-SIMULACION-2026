@@ -6,7 +6,7 @@ class Cliente:
         self.reloj = reloj
         self.hora_abandono = reloj + tiempo_tolerancia
 
-        # cuando se crea un cliente se define la preferencia del mismo
+        # Cuando se crea un cliente se define la preferencia del mismo
         self.rnd_preferencia = round(random.random(),4)
         if self.rnd_preferencia < 0.15:
             self.preferencia = "Aprendiz"
