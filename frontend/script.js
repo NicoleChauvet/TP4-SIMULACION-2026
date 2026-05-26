@@ -34,7 +34,7 @@ async function ejecutarSimulacion() {
         const data = await response.json();
 
         if (!response.ok) {
-            mostrarError(data.error || 'Error desconocido en el servidor.');
+            mostrarError(data.error || 'Error en el servidor.');
             return;
         }
 
@@ -43,7 +43,7 @@ async function ejecutarSimulacion() {
         mostrarResultados(data.filas.length);
 
     } catch (err) {
-        mostrarError('No se pudo conectar con el servidor. ¿Está corriendo app.py?');
+        mostrarError('No se pudo conectar con el servidor.');
     } finally {
         mostrarSpinner(false);
         deshabilitarBoton(false);

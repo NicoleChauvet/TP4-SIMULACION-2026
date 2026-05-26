@@ -9,9 +9,11 @@
     --accent2:    #f0d97a;
     --text:       #e2e6f0;
     --text-muted: #b5bbcc;
-    --text-dim:   #b5bbcc;
+    --text-sec:   #656e86;
     --red:        #e05c5c;
-    --green:      #4caf7d;
+    --green:      #67e2a5;
+    --purple:     #b379e0;
+    --light-blue: #6abedd;
     --row-hover:  rgba(232, 197, 71, 0.06);
     --row-sel:    rgba(232, 197, 71, 0.14);
     --row-sel-border: rgba(232, 197, 71, 0.5);
@@ -163,7 +165,7 @@ main {
     gap: 8px;
     font-size: 12px;
     font-weight: 500;
-    color: var(--text-dim);
+    color: var(--text-muted);
     letter-spacing: 0.02em;
 }
 
@@ -202,7 +204,7 @@ main {
 }
 
 .field-group input::placeholder {
-    color: var(--text-muted);
+    color: var(--text-sec);
 }
 
 .field-hint {
@@ -273,7 +275,7 @@ main {
     align-items: center;
     gap: 16px;
     padding: 60px;
-    color: var(--text-dim);
+    color: var(--text-muted);
     font-size: 14px;
 }
 
@@ -354,7 +356,7 @@ kbd {
     padding: 1px 6px;
     font-family: var(--font-mono);
     font-size: 11px;
-    color: var(--text-dim);
+    color: var(--text-muted);
 }
 
 /* ── Table wrapper ─────────────────────────────────── */
@@ -424,7 +426,7 @@ kbd {
 #tablaResultados tbody td {
     padding: 8px 14px;
     font-size: 12px;
-    color: var(--text-dim);
+    color: var(--text);
     white-space: nowrap;
     border-bottom: 1px solid rgba(255,255,255,0.04);
 }
@@ -440,12 +442,12 @@ kbd {
 }
 
 /* Columna evento con color según tipo */
-.ev-llegada   { color: #7ec8e3 !important; }
-.ev-fin       { color: #7ed3a8 !important; }
+.ev-llegada   { color: var(--light-blue) !important; }
+.ev-fin       { color: var(--green) !important; }
 .ev-abandono  { color: var(--red) !important; }
-.ev-cierre    { color: #c8a4e3 !important; }
+.ev-cierre    { color: var(--purple) !important; }
 .ev-dia       { color: var(--accent) !important; font-weight: 500; }
-.ev-init      { color: var(--text-muted) !important; }
+.ev-init      { color: var(--accent) !important; }
 
 /* Scrollbar personalizada */
 .table-wrapper::-webkit-scrollbar { width: 8px; height: 8px; }
