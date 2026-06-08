@@ -261,7 +261,7 @@ class Simulador:
         self.preferencia_actual = "-"
 
     def registrar_fila_en_matriz(self):
-        # AQUÍ OCURRE EL REDONDEO: Exclusivamente para la tabla visual. La matemática no se ve afectada.
+        # Validaciones iniciales
         rnd_lleg_str = f"{self.rnd_llegada_actual:.2f}" if self.rnd_llegada_actual is not None else "-"
         t_lleg_str = f"{self.tiempo_llegada_actual:.2f}" if self.tiempo_llegada_actual is not None else "-"
         p_lleg_str = f"{self.proxima_llegada:.2f}" if self.proxima_llegada != float('inf') else "-"

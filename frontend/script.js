@@ -37,7 +37,6 @@ function formatTime(val) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// OPTIMIZACIÓN EXTREMA DE RENDIMIENTO: Un solo Event Listener global para toda la tabla
 document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('tablaBody');
     tbody.addEventListener('click', function(e) {
