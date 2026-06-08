@@ -31,6 +31,7 @@ def simular():
         if X <= 0 or i <= 0 or j < 0:
             return jsonify({'error': 'Valores inválidos en los parámetros.'}), 400
 
+        # Creamos el simulador y lo ejecutamos
         simulador = Simulador(X, i, j, params)
         filas, columnas, metricas = simulador.ejecutar()
 
@@ -42,5 +43,6 @@ def simular():
     except Exception as e:
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
 
+# ESTO NO SE BORRA: Es lo que levanta el servidor de tu página web
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

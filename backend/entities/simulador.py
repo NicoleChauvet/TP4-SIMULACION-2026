@@ -13,14 +13,17 @@ COLUMNAS = [
 ]
 
 class Simulador:
+    # =========================================================
+    # 1. INICIALIZACIÓN DE LA SIMULACIÓN
+    # =========================================================
     def __init__(self, X, i, j, params):
-        self.X_tiempo = X
-        self.i_iteraciones = i
-        self.j_minuto = j
+        self.tiempo_maximo_simulacion = X
+        self.cantidad_iteraciones_mostrar = i
+        self.minuto_inicio_mostrar = j
 
-        # Parámetros estocásticos
-        self.lleg_a = params.get('lleg_a', 2.0)
-        self.lleg_b = params.get('lleg_b', 12.0)
+        # Tiempos del sistema (Límites A y B explícitos)
+        self.llegada_a = params.get('lleg_a', 2.0)
+        self.llegada_b = params.get('lleg_b', 12.0)
         self.ap_a = params.get('ap_a', 20.0)
         self.ap_b = params.get('ap_b', 30.0)
         self.va_a = params.get('va_a', 11.0)
@@ -28,294 +31,268 @@ class Simulador:
         self.vb_a = params.get('vb_a', 12.0)
         self.vb_b = params.get('vb_b', 18.0)
         
-        self.prob_ap = params.get('prob_ap', 15.0) / 100.0
-        self.prob_va = params.get('prob_va', 45.0) / 100.0
+        self.prob_aprendiz = params.get('prob_ap', 15.0) / 100.0
+        self.prob_vet_a = params.get('prob_va', 45.0) / 100.0
 
-        self.duracion_dia = 480.0
-        self.tiempo_tolerancia = 30.0
+        self.duracion_jornada = 480.0
+        self.tolerancia_espera = 30.0
 
         self.aprendiz = Peluquero("Aprendiz")
         self.veterano_a = Peluquero("Veterano A")
         self.veterano_b = Peluquero("Veterano B")
         self.peluqueros = [self.aprendiz, self.veterano_a, self.veterano_b]
+        
+        self.colas = {"Aprendiz": [], "Veterano A": [], "Veterano B": []}
 
+        # Relojes y contadores
         self.reloj_dia = 0.0
         self.reloj_absoluto = 0.0
         self.dia_actual = 1
         self.iteracion_actual = 1
-        self.id_cliente = 1
+        self.id_cliente_global = 1
 
-        # AHORA TENEMOS LAS 3 COLAS INDEPENDIENTES TAL COMO DICE EL PDF
-        self.cola_ap = []
-        self.cola_va = []
-        self.cola_vb = []
-        
-        self.total_abandonos = 0
-        self.acum_tiempo_libre_ap = 0.0
-        self.max_sillas = 0
-        self.dias_cola_mayor_3 = 0
-        self.cierres_procesados = 0
+        self.acumulador_tiempo_libre_aprendiz = 0.0
+        self.maximo_sillas_usadas = 0
+        self.dias_con_cola_larga = 0
+        self.cierres_totales = 0
 
-        self.prox_llegada = 0.0
-        self.prox_cierre = self.duracion_dia
+        self.proxima_llegada = 0.0
+        self.proximo_cierre = self.duracion_jornada
         self.evento_actual = "Inicio de Día"
         
-        self.iteraciones_mostradas = 0  
-        self.limpiar_randoms()
-        self.filas = []
-
-    def limpiar_randoms(self):
-        self.rnd_lleg_str = "-"
-        self.t_lleg_str = "-"
-        self.rnd_pref_str = "-"
-        self.pref_str = "-"
-
-    def inicializar_dia(self):
-        self.reloj_dia = 0.0
-        # Limpiamos las 3 colas al iniciar el día
-        self.cola_ap.clear()
-        self.cola_va.clear()
-        self.cola_vb.clear()
+        # Variables exclusivas para guardar la "foto" visual de la fila (Sin truncar matemáticamente)
+        self.rnd_llegada_actual = None
+        self.tiempo_llegada_actual = None
+        self.rnd_preferencia_actual = None
+        self.preferencia_actual = None
         
-        for p in self.peluqueros:
-            p.liberar()
+        self.filas_a_mostrar = []
+        self.contador_filas_mostradas = 0
 
-        rnd = round(random.random(), 2)
-        t_lleg = self.lleg_a + rnd * (self.lleg_b - self.lleg_a)
-        
-        self.prox_llegada = t_lleg
-        self.prox_cierre = self.duracion_dia
-        self.rnd_lleg_str = f"{rnd:.2f}"
-        self.t_lleg_str = t_lleg 
-
-    def obtener_prox_abandono(self):
-        """Revisa la primera persona de las 3 colas y devuelve el menor tiempo de abandono"""
-        tiempos = []
-        # Como es FIFO, si la cola tiene gente, el que más esperó siempre está en el índice 0
-        if self.cola_ap:
-            tiempos.append(self.cola_ap[0].hora_llegada_cola + self.tiempo_tolerancia)
-        if self.cola_va:
-            tiempos.append(self.cola_va[0].hora_llegada_cola + self.tiempo_tolerancia)
-        if self.cola_vb:
-            tiempos.append(self.cola_vb[0].hora_llegada_cola + self.tiempo_tolerancia)
-            
-        return min(tiempos) if tiempos else float('inf')
-
-    def intentar_registrar(self, es_ultima=False):
-        if es_ultima or (self.reloj_absoluto >= self.j_minuto and self.iteraciones_mostradas < self.i_iteraciones):
-            self.registrar_fila()
-            if not es_ultima and self.reloj_absoluto >= self.j_minuto:
-                self.iteraciones_mostradas += 1
-
+    # =========================================================
+    # 2. MOTOR DE EVENTOS (El Bucle Principal)
+    # =========================================================
     def ejecutar(self):
         self.inicializar_dia()
-        self.evento_actual = "Inicio de Día"
-        self.intentar_registrar()
+        self.evaluar_guardado_fila()
         self.iteracion_actual += 1
-        self.limpiar_randoms()
+        self.limpiar_variables_de_fila()
 
-        while self.reloj_absoluto <= self.X_tiempo and self.iteracion_actual <= 100000:
-            reloj_anterior_dia = self.reloj_dia
-            prox_abandono = self.obtener_prox_abandono()
+        # Condición de corte global
+        while self.reloj_absoluto <= self.tiempo_maximo_simulacion and self.iteracion_actual <= 100000:
+            reloj_previo = self.reloj_dia
 
+            # Agrupa tiempos futuros para buscar el mínimo
             eventos = {
-                'Llegada Cliente': self.prox_llegada,
+                'Llegada Cliente': self.proxima_llegada,
                 'Fin Atencion Aprendiz': self.aprendiz.fin_atencion,
                 'Fin Atencion Veterano A': self.veterano_a.fin_atencion,
                 'Fin Atencion Veterano B': self.veterano_b.fin_atencion,
-                'Abandono': prox_abandono,
-                'Cierre Recepcion': self.prox_cierre
+                'Abandono': self.obtener_proximo_abandono(),
+                'Cierre Recepcion': self.proximo_cierre
             }
 
-            min_tiempo = min(eventos.values())
+            tiempo_minimo = min(eventos.values())
+            total_en_colas = sum(len(c) for c in self.colas.values())
+            todos_libres = all(p.estado == 'Libre' for p in self.peluqueros)
 
-            # Para cerrar la peluquería, las TRES colas deben estar vacías
-            colas_vacias = len(self.cola_ap) == 0 and len(self.cola_va) == 0 and len(self.cola_vb) == 0
-            
-            if min_tiempo == float('inf') or (self.reloj_dia >= self.duracion_dia and colas_vacias and all(p.estado == 'Libre' for p in self.peluqueros)):
+            # Verifica si el local terminó su jornada
+            if tiempo_minimo == float('inf') or (self.reloj_dia >= self.duracion_jornada and total_en_colas == 0 and todos_libres):
                 proximo_evento = 'Cierre Peluquería'
-                avance = 0
+                avance_reloj = 0
             else:
                 proximo_evento = min(eventos, key=eventos.get)
-                avance = min_tiempo - reloj_anterior_dia
+                avance_reloj = tiempo_minimo - reloj_previo
 
-            if self.reloj_absoluto + avance > self.X_tiempo:
-                avance_restante = self.X_tiempo - self.reloj_absoluto
+            # Freno exacto si superamos el tiempo pedido X
+            if self.reloj_absoluto + avance_reloj > self.tiempo_maximo_simulacion:
+                avance_restante = self.tiempo_maximo_simulacion - self.reloj_absoluto
                 self.reloj_absoluto += avance_restante
                 if self.aprendiz.estado == "Libre":
-                    self.acum_tiempo_libre_ap += avance_restante
-                
-                self.intentar_registrar(es_ultima=True)
+                    self.acumulador_tiempo_libre_aprendiz += avance_restante
+                self.evaluar_guardado_fila(forzar_guardado=True)
                 break
 
             self.evento_actual = proximo_evento
             if self.evento_actual != 'Cierre Peluquería':
-                self.reloj_dia = min_tiempo
+                self.reloj_dia = tiempo_minimo
             
-            self.reloj_absoluto += avance
+            self.reloj_absoluto += avance_reloj
             if self.aprendiz.estado == "Libre":
-                self.acum_tiempo_libre_ap += avance
+                self.acumulador_tiempo_libre_aprendiz += avance_reloj
+
+            # === PROCESAMIENTO DE EVENTOS ===
 
             if self.evento_actual == 'Llegada Cliente':
-                if self.reloj_dia < self.duracion_dia:
-                    rnd_lleg = round(random.random(), 2)
-                    t_lleg = self.lleg_a + rnd_lleg * (self.lleg_b - self.lleg_a)
-                    self.prox_llegada = self.reloj_dia + t_lleg
-                    self.rnd_lleg_str = f"{rnd_lleg:.2f}"
-                    self.t_lleg_str = t_lleg
+                if self.reloj_dia < self.duracion_jornada:
+                    rnd_llegada = random.random() 
+                    tiempo_llegada = self.llegada_a + rnd_llegada * (self.llegada_b - self.llegada_a)
+                    self.proxima_llegada = self.reloj_dia + tiempo_llegada
+                    # Guarda el número original para la tabla
+                    self.rnd_llegada_actual = rnd_llegada
+                    self.tiempo_llegada_actual = tiempo_llegada
                 else:
-                    self.prox_llegada = float('inf')
+                    self.proxima_llegada = float('inf')
 
-                rnd_pref = round(random.random(), 2)
-                if rnd_pref < self.prob_ap:
-                    preferencia_asignada = "Aprendiz"
-                elif rnd_pref < (self.prob_ap + self.prob_va):
-                    preferencia_asignada = "Veterano A"
+                rnd_preferencia = random.random()
+                if rnd_preferencia < self.prob_aprendiz:
+                    preferencia = "Aprendiz"
+                elif rnd_preferencia < (self.prob_aprendiz + self.prob_vet_a):
+                    preferencia = "Veterano A"
                 else:
-                    preferencia_asignada = "Veterano B"
+                    preferencia = "Veterano B"
 
-                nuevo_cliente = Cliente(self.id_cliente, preferencia_asignada)
-                self.id_cliente += 1
+                nuevo_cliente = Cliente(self.id_cliente_global, preferencia)
+                self.id_cliente_global += 1
+                self.rnd_preferencia_actual = rnd_preferencia
+                self.preferencia_actual = preferencia
 
-                self.rnd_pref_str = f"{rnd_pref:.2f}"
-                self.pref_str = nuevo_cliente.preferencia
-
-                p_obj = self.aprendiz if nuevo_cliente.preferencia == "Aprendiz" else (self.veterano_a if nuevo_cliente.preferencia == "Veterano A" else self.veterano_b)
-
-                if p_obj.estado == "Libre":
-                    nuevo_cliente.estado = f"Siendo Atendido por {p_obj.nombre}"
-                    
-                    rnd_atencion = round(random.random(), 2)
-                    if p_obj.nombre == "Aprendiz":
-                        tiempo_at = self.ap_a + rnd_atencion * (self.ap_b - self.ap_a)
-                    elif p_obj.nombre == "Veterano A":
-                        tiempo_at = self.va_a + rnd_atencion * (self.va_b - self.va_a)
-                    else:
-                        tiempo_at = self.vb_a + rnd_atencion * (self.vb_b - self.vb_a)
-                        
-                    fin_at = self.reloj_dia + tiempo_at
-                    p_obj.ocupar(nuevo_cliente, fin_at)
+                peluquero_asignado = next(p for p in self.peluqueros if p.nombre == preferencia)
+                
+                if peluquero_asignado.estado == "Libre":
+                    self.iniciar_atencion(peluquero_asignado, nuevo_cliente)
                 else:
-                    nuevo_cliente.estado = f"En Cola {p_obj.nombre}"
+                    nuevo_cliente.estado = f"En Cola {preferencia}"
                     nuevo_cliente.hora_llegada_cola = self.reloj_dia
+                    self.colas[preferencia].append(nuevo_cliente) 
                     
-                    # Lo mandamos físicamente a su cola independiente
-                    if p_obj.nombre == "Aprendiz":
-                        self.cola_ap.append(nuevo_cliente)
-                    elif p_obj.nombre == "Veterano A":
-                        self.cola_va.append(nuevo_cliente)
-                    else:
-                        self.cola_vb.append(nuevo_cliente)
-                    
-                    total_personas_esperando = len(self.cola_ap) + len(self.cola_va) + len(self.cola_vb)
-                    self.max_sillas = max(self.max_sillas, total_personas_esperando)
+                    self.maximo_sillas_usadas = max(self.maximo_sillas_usadas, sum(len(c) for c in self.colas.values()))
 
-            elif self.evento_actual == 'Fin Atencion Aprendiz':
-                self.procesar_fin_atencion(self.aprendiz)
-            elif self.evento_actual == 'Fin Atencion Veterano A':
-                self.procesar_fin_atencion(self.veterano_a)
-            elif self.evento_actual == 'Fin Atencion Veterano B':
-                self.procesar_fin_atencion(self.veterano_b)
+            elif self.evento_actual.startswith('Fin Atencion'):
+                nombre_peluquero = self.evento_actual.replace('Fin Atencion ', '')
+                peluquero_terminado = next(p for p in self.peluqueros if p.nombre == nombre_peluquero)
+                self.procesar_fin_atencion(peluquero_terminado)
 
             elif self.evento_actual == 'Abandono':
-                # Revisamos cuál de las 3 colas tiene al cliente que cumplió su tiempo
-                for cola in [self.cola_ap, self.cola_va, self.cola_vb]:
-                    if len(cola) > 0 and abs((cola[0].hora_llegada_cola + self.tiempo_tolerancia) - self.reloj_dia) < 0.001:
-                        cola.pop(0) # Lo sacamos de la cola
-                        self.total_abandonos += 1
-                        break # Solo se va uno en este evento exacto
+                for cola in self.colas.values():
+                    if cola and abs((cola[0].hora_llegada_cola + self.tolerancia_espera) - self.reloj_dia) < 0.001:
+                        cola.pop(0)
+                        break 
 
             elif self.evento_actual == 'Cierre Recepcion':
-                total_personas_esperando = len(self.cola_ap) + len(self.cola_va) + len(self.cola_vb)
-                if total_personas_esperando >= 3:
-                    self.dias_cola_mayor_3 += 1
-                self.cierres_procesados += 1
-                self.prox_llegada = float('inf')
-                self.prox_cierre = float('inf')
+                if sum(len(c) for c in self.colas.values()) >= 3:
+                    self.dias_con_cola_larga += 1
+                self.cierres_totales += 1
+                self.proxima_llegada = float('inf')
+                self.proximo_cierre = float('inf')
 
             elif self.evento_actual == 'Cierre Peluquería':
-                self.intentar_registrar(es_ultima=False)
-                self.iteracion_actual += 1
-                
+                self.evaluar_guardado_fila()
                 self.dia_actual += 1
+                self.iteracion_actual += 1
                 self.inicializar_dia()
                 self.evento_actual = "Inicio de Día"
-                self.intentar_registrar()
+                self.evaluar_guardado_fila()
                 self.iteracion_actual += 1
-                self.limpiar_randoms()
+                self.limpiar_variables_de_fila()
                 continue
 
-            self.intentar_registrar(es_ultima=False)
+            self.evaluar_guardado_fila()
             self.iteracion_actual += 1
-            self.limpiar_randoms()
+            self.limpiar_variables_de_fila()
 
-        pct_libre_ap = round((self.acum_tiempo_libre_ap / self.reloj_absoluto) * 100, 2) if self.reloj_absoluto > 0 else 0.0
-        prob_cola = round(self.dias_cola_mayor_3 / self.cierres_procesados, 2) if self.cierres_procesados > 0 else 0.00
+        # Métricas de salida
+        porcentaje_libre_aprendiz = round((self.acumulador_tiempo_libre_aprendiz / self.reloj_absoluto) * 100, 2) if self.reloj_absoluto > 0 else 0.0
+        probabilidad_cola = round(self.dias_con_cola_larga / self.cierres_totales, 2) if self.cierres_totales > 0 else 0.0
 
         metricas = {
-            "pct_libre_aprendiz": pct_libre_ap,
-            "max_sillas": self.max_sillas,
-            "prob_cola_tres": prob_cola
+            "pct_libre_aprendiz": porcentaje_libre_aprendiz,
+            "max_sillas": self.maximo_sillas_usadas,
+            "prob_cola_tres": probabilidad_cola
         }
 
-        return self.filas, COLUMNAS, metricas
+        return self.filas_a_mostrar, COLUMNAS, metricas
+
+    # =========================================================
+    # 3. FUNCIONES DE LÓGICA INTERNA
+    # =========================================================
+    def iniciar_atencion(self, peluquero, cliente):
+        cliente.estado = f"Siendo Atendido por {peluquero.nombre}"
+        rnd_atencion = random.random() # Precisión completa
+        
+        if peluquero.nombre == "Aprendiz":
+            tiempo_atencion = self.ap_a + rnd_atencion * (self.ap_b - self.ap_a)
+        elif peluquero.nombre == "Veterano A":
+            tiempo_atencion = self.va_a + rnd_atencion * (self.va_b - self.va_a)
+        else:
+            tiempo_atencion = self.vb_a + rnd_atencion * (self.vb_b - self.vb_a)
+            
+        peluquero.ocupar(cliente, self.reloj_dia + tiempo_atencion)
 
     def procesar_fin_atencion(self, peluquero):
-        # Selecciona la cola física correspondiente al peluquero que se liberó
-        if peluquero.nombre == "Aprendiz":
-            cola_activa = self.cola_ap
-        elif peluquero.nombre == "Veterano A":
-            cola_activa = self.cola_va
-        else:
-            cola_activa = self.cola_vb
-
-        if len(cola_activa) > 0:
-            siguiente = cola_activa.pop(0) # Saca al primero (FIFO)
-            siguiente.estado = f"Siendo Atendido por {peluquero.nombre}"
-            
-            rnd_atencion = round(random.random(), 2)
-            if peluquero.nombre == "Aprendiz":
-                tiempo_at = self.ap_a + rnd_atencion * (self.ap_b - self.ap_a)
-            elif peluquero.nombre == "Veterano A":
-                tiempo_at = self.va_a + rnd_atencion * (self.va_b - self.va_a)
-            else:
-                tiempo_at = self.vb_a + rnd_atencion * (self.vb_b - self.vb_a)
-                
-            fin_at = self.reloj_dia + tiempo_at
-            peluquero.ocupar(siguiente, fin_at)
+        cola_activa = self.colas[peluquero.nombre]
+        if cola_activa:
+            siguiente_cliente = cola_activa.pop(0)
+            self.iniciar_atencion(peluquero, siguiente_cliente)
         else:
             peluquero.liberar()
 
-    def registrar_fila(self):
-        p_lleg = round(self.prox_llegada, 2) if self.prox_llegada != float('inf') else "-"
+    def obtener_proximo_abandono(self):
+        tiempos_abandono = [cola[0].hora_llegada_cola + self.tolerancia_espera for cola in self.colas.values() if cola]
+        return min(tiempos_abandono) if tiempos_abandono else float('inf')
+
+    # =========================================================
+    # 4. FUNCIONES DE FORMATO VISUAL Y EXPORTACIÓN
+    # =========================================================
+    def inicializar_dia(self):
+        self.reloj_dia = 0.0
+        for cola in self.colas.values(): cola.clear()
+        for p in self.peluqueros: p.liberar()
+
+        rnd_llegada = random.random()
+        tiempo_llegada = self.llegada_a + rnd_llegada * (self.llegada_b - self.llegada_a)
         
-        c_ap = len(self.cola_ap)
-        c_va = len(self.cola_va)
-        c_vb = len(self.cola_vb)
+        self.proxima_llegada = tiempo_llegada
+        self.proximo_cierre = self.duracion_jornada
+        self.rnd_llegada_actual = rnd_llegada
+        self.tiempo_llegada_actual = tiempo_llegada
+
+    def evaluar_guardado_fila(self, forzar_guardado=False):
+        if forzar_guardado or (self.reloj_absoluto >= self.minuto_inicio_mostrar and self.contador_filas_mostradas < self.cantidad_iteraciones_mostrar):
+            self.registrar_fila_en_matriz()
+            if not forzar_guardado and self.reloj_absoluto >= self.minuto_inicio_mostrar:
+                self.contador_filas_mostradas += 1
+
+    def limpiar_variables_de_fila(self):
+        # Limpia los datos temporales de la fila para que no se arrastren en el Excel
+        self.rnd_llegada_actual = None
+        self.tiempo_llegada_actual = None
+        self.rnd_preferencia_actual = None
+        self.preferencia_actual = "-"
+
+    def registrar_fila_en_matriz(self):
+        # AQUÍ OCURRE EL REDONDEO: Exclusivamente para la tabla visual. La matemática no se ve afectada.
+        rnd_lleg_str = f"{self.rnd_llegada_actual:.2f}" if self.rnd_llegada_actual is not None else "-"
+        t_lleg_str = f"{self.tiempo_llegada_actual:.2f}" if self.tiempo_llegada_actual is not None else "-"
+        p_lleg_str = f"{self.proxima_llegada:.2f}" if self.proxima_llegada != float('inf') else "-"
+        rnd_pref_str = f"{self.rnd_preferencia_actual:.2f}" if self.rnd_preferencia_actual is not None else "-"
+
+        c_ap = len(self.colas["Aprendiz"])
+        c_va = len(self.colas["Veterano A"])
+        c_vb = len(self.colas["Veterano B"])
 
         cli_ap = self.aprendiz.cliente_actual.id_cliente if self.aprendiz.cliente_actual else "-"
         cli_va = self.veterano_a.cliente_actual.id_cliente if self.veterano_a.cliente_actual else "-"
         cli_vb = self.veterano_b.cliente_actual.id_cliente if self.veterano_b.cliente_actual else "-"
 
-        pct_libre_ap = round((self.acum_tiempo_libre_ap / self.reloj_absoluto) * 100, 2) if self.reloj_absoluto > 0 else 0.0
-        prob_cola = round(self.dias_cola_mayor_3 / self.cierres_procesados, 2) if self.cierres_procesados > 0 else 0.00
-
-        nro_cli = self.id_cliente - 1 if self.evento_actual == 'Llegada Cliente' else "-"
+        pct_libre_ap = round((self.acumulador_tiempo_libre_aprendiz / self.reloj_absoluto) * 100, 2) if self.reloj_absoluto > 0 else 0.0
+        prob_cola = round(self.dias_con_cola_larga / self.cierres_totales, 2) if self.cierres_totales > 0 else 0.00
+        nro_cli = self.id_cliente_global - 1 if self.evento_actual == 'Llegada Cliente' else "-"
 
         fila = [
             self.iteracion_actual,
             self.dia_actual,
-            round(self.reloj_dia, 2),
-            round(self.reloj_absoluto, 2),
+            f"{self.reloj_dia:.2f}",
+            f"{self.reloj_absoluto:.2f}",
             self.evento_actual,
             nro_cli,
-            self.rnd_lleg_str, self.t_lleg_str, p_lleg,
-            self.rnd_pref_str, self.pref_str,
-            self.aprendiz.estado, cli_ap, round(self.aprendiz.fin_atencion, 2) if self.aprendiz.fin_atencion != float('inf') else "-", c_ap,
-            self.veterano_a.estado, cli_va, round(self.veterano_a.fin_atencion, 2) if self.veterano_a.fin_atencion != float('inf') else "-", c_va,
-            self.veterano_b.estado, cli_vb, round(self.veterano_b.fin_atencion, 2) if self.veterano_b.fin_atencion != float('inf') else "-", c_vb,
-            pct_libre_ap,            
-            self.max_sillas,         
-            prob_cola                
+            rnd_lleg_str, t_lleg_str, p_lleg_str,
+            rnd_pref_str, self.preferencia_actual,
+            self.aprendiz.estado, cli_ap, f"{self.aprendiz.fin_atencion:.2f}" if self.aprendiz.fin_atencion != float('inf') else "-", c_ap,
+            self.veterano_a.estado, cli_va, f"{self.veterano_a.fin_atencion:.2f}" if self.veterano_a.fin_atencion != float('inf') else "-", c_va,
+            self.veterano_b.estado, cli_vb, f"{self.veterano_b.fin_atencion:.2f}" if self.veterano_b.fin_atencion != float('inf') else "-", c_vb,
+            f"{pct_libre_ap}%",            
+            self.maximo_sillas_usadas,         
+            f"{prob_cola}%"                
         ]
-        self.filas.append(fila)
+        self.filas_a_mostrar.append(fila)
