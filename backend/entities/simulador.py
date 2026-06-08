@@ -18,7 +18,7 @@ class Simulador:
         self.i_iteraciones = i
         self.j_minuto = j
 
-        # Parámetros del sistema
+        # Parámetros estocásticos
         self.lleg_a = params.get('lleg_a', 2.0)
         self.lleg_b = params.get('lleg_b', 12.0)
         self.ap_a = params.get('ap_a', 20.0)
@@ -34,7 +34,6 @@ class Simulador:
         self.duracion_dia = 480.0
         self.tiempo_tolerancia = 30.0
 
-        # Entidades puras (sin parámetros estocásticos como atributos)
         self.aprendiz = Peluquero("Aprendiz")
         self.veterano_a = Peluquero("Veterano A")
         self.veterano_b = Peluquero("Veterano B")
@@ -46,7 +45,10 @@ class Simulador:
         self.iteracion_actual = 1
         self.id_cliente = 1
 
-        self.cola = []
+        # AHORA TENEMOS LAS 3 COLAS INDEPENDIENTES TAL COMO DICE EL PDF
+        self.cola_ap = []
+        self.cola_va = []
+        self.cola_vb = []
         
         self.total_abandonos = 0
         self.acum_tiempo_libre_ap = 0.0
@@ -67,11 +69,14 @@ class Simulador:
         self.t_lleg_str = "-"
         self.rnd_pref_str = "-"
         self.pref_str = "-"
-        # Se elimina el reinicio del flag visual "mostrado" ya que las entidades no lo manejan.
 
     def inicializar_dia(self):
         self.reloj_dia = 0.0
-        self.cola.clear()
+        # Limpiamos las 3 colas al iniciar el día
+        self.cola_ap.clear()
+        self.cola_va.clear()
+        self.cola_vb.clear()
+        
         for p in self.peluqueros:
             p.liberar()
 
@@ -84,9 +89,17 @@ class Simulador:
         self.t_lleg_str = t_lleg 
 
     def obtener_prox_abandono(self):
-        if not self.cola:
-            return float('inf')
-        return min(c.hora_llegada_cola + self.tiempo_tolerancia for c in self.cola)
+        """Revisa la primera persona de las 3 colas y devuelve el menor tiempo de abandono"""
+        tiempos = []
+        # Como es FIFO, si la cola tiene gente, el que más esperó siempre está en el índice 0
+        if self.cola_ap:
+            tiempos.append(self.cola_ap[0].hora_llegada_cola + self.tiempo_tolerancia)
+        if self.cola_va:
+            tiempos.append(self.cola_va[0].hora_llegada_cola + self.tiempo_tolerancia)
+        if self.cola_vb:
+            tiempos.append(self.cola_vb[0].hora_llegada_cola + self.tiempo_tolerancia)
+            
+        return min(tiempos) if tiempos else float('inf')
 
     def intentar_registrar(self, es_ultima=False):
         if es_ultima or (self.reloj_absoluto >= self.j_minuto and self.iteraciones_mostradas < self.i_iteraciones):
@@ -116,15 +129,16 @@ class Simulador:
 
             min_tiempo = min(eventos.values())
 
-            # Detectar el próximo evento
-            if min_tiempo == float('inf') or (self.reloj_dia >= self.duracion_dia and len(self.cola) == 0 and all(p.estado == 'Libre' for p in self.peluqueros)):
+            # Para cerrar la peluquería, las TRES colas deben estar vacías
+            colas_vacias = len(self.cola_ap) == 0 and len(self.cola_va) == 0 and len(self.cola_vb) == 0
+            
+            if min_tiempo == float('inf') or (self.reloj_dia >= self.duracion_dia and colas_vacias and all(p.estado == 'Libre' for p in self.peluqueros)):
                 proximo_evento = 'Cierre Peluquería'
                 avance = 0
             else:
                 proximo_evento = min(eventos, key=eventos.get)
                 avance = min_tiempo - reloj_anterior_dia
 
-            # SI EL PRÓXIMO EVENTO SUPERA EL TIEMPO X, SE CORTA LA SIMULACIÓN
             if self.reloj_absoluto + avance > self.X_tiempo:
                 avance_restante = self.X_tiempo - self.reloj_absoluto
                 self.reloj_absoluto += avance_restante
@@ -135,7 +149,6 @@ class Simulador:
                 break
 
             self.evento_actual = proximo_evento
-            
             if self.evento_actual != 'Cierre Peluquería':
                 self.reloj_dia = min_tiempo
             
@@ -147,14 +160,12 @@ class Simulador:
                 if self.reloj_dia < self.duracion_dia:
                     rnd_lleg = round(random.random(), 2)
                     t_lleg = self.lleg_a + rnd_lleg * (self.lleg_b - self.lleg_a)
-                    
                     self.prox_llegada = self.reloj_dia + t_lleg
                     self.rnd_lleg_str = f"{rnd_lleg:.2f}"
                     self.t_lleg_str = t_lleg
                 else:
                     self.prox_llegada = float('inf')
 
-                # 1. El Simulador tira el RND y decide la preferencia
                 rnd_pref = round(random.random(), 2)
                 if rnd_pref < self.prob_ap:
                     preferencia_asignada = "Aprendiz"
@@ -163,7 +174,6 @@ class Simulador:
                 else:
                     preferencia_asignada = "Veterano B"
 
-                # 2. Creamos al cliente limpio
                 nuevo_cliente = Cliente(self.id_cliente, preferencia_asignada)
                 self.id_cliente += 1
 
@@ -172,11 +182,9 @@ class Simulador:
 
                 p_obj = self.aprendiz if nuevo_cliente.preferencia == "Aprendiz" else (self.veterano_a if nuevo_cliente.preferencia == "Veterano A" else self.veterano_b)
 
-                # 3. Lógica de asignación de servidor o cola
                 if p_obj.estado == "Libre":
                     nuevo_cliente.estado = f"Siendo Atendido por {p_obj.nombre}"
                     
-                    # El Simulador calcula el tiempo de atención y se lo informa al peluquero
                     rnd_atencion = round(random.random(), 2)
                     if p_obj.nombre == "Aprendiz":
                         tiempo_at = self.ap_a + rnd_atencion * (self.ap_b - self.ap_a)
@@ -190,8 +198,17 @@ class Simulador:
                 else:
                     nuevo_cliente.estado = f"En Cola {p_obj.nombre}"
                     nuevo_cliente.hora_llegada_cola = self.reloj_dia
-                    self.cola.append(nuevo_cliente)
-                    self.max_sillas = max(self.max_sillas, len(self.cola))
+                    
+                    # Lo mandamos físicamente a su cola independiente
+                    if p_obj.nombre == "Aprendiz":
+                        self.cola_ap.append(nuevo_cliente)
+                    elif p_obj.nombre == "Veterano A":
+                        self.cola_va.append(nuevo_cliente)
+                    else:
+                        self.cola_vb.append(nuevo_cliente)
+                    
+                    total_personas_esperando = len(self.cola_ap) + len(self.cola_va) + len(self.cola_vb)
+                    self.max_sillas = max(self.max_sillas, total_personas_esperando)
 
             elif self.evento_actual == 'Fin Atencion Aprendiz':
                 self.procesar_fin_atencion(self.aprendiz)
@@ -201,13 +218,16 @@ class Simulador:
                 self.procesar_fin_atencion(self.veterano_b)
 
             elif self.evento_actual == 'Abandono':
-                cliente_retirado = next((c for c in self.cola if abs((c.hora_llegada_cola + self.tiempo_tolerancia) - self.reloj_dia) < 0.001), None)
-                if cliente_retirado:
-                    self.cola.remove(cliente_retirado)
-                    self.total_abandonos += 1
+                # Revisamos cuál de las 3 colas tiene al cliente que cumplió su tiempo
+                for cola in [self.cola_ap, self.cola_va, self.cola_vb]:
+                    if len(cola) > 0 and abs((cola[0].hora_llegada_cola + self.tiempo_tolerancia) - self.reloj_dia) < 0.001:
+                        cola.pop(0) # Lo sacamos de la cola
+                        self.total_abandonos += 1
+                        break # Solo se va uno en este evento exacto
 
             elif self.evento_actual == 'Cierre Recepcion':
-                if len(self.cola) >= 3:
+                total_personas_esperando = len(self.cola_ap) + len(self.cola_va) + len(self.cola_vb)
+                if total_personas_esperando >= 3:
                     self.dias_cola_mayor_3 += 1
                 self.cierres_procesados += 1
                 self.prox_llegada = float('inf')
@@ -222,7 +242,6 @@ class Simulador:
                 self.evento_actual = "Inicio de Día"
                 self.intentar_registrar()
                 self.iteracion_actual += 1
-                
                 self.limpiar_randoms()
                 continue
 
@@ -242,12 +261,18 @@ class Simulador:
         return self.filas, COLUMNAS, metricas
 
     def procesar_fin_atencion(self, peluquero):
-        siguiente = next((c for c in self.cola if c.preferencia == peluquero.nombre), None)
-        if siguiente:
-            self.cola.remove(siguiente)
+        # Selecciona la cola física correspondiente al peluquero que se liberó
+        if peluquero.nombre == "Aprendiz":
+            cola_activa = self.cola_ap
+        elif peluquero.nombre == "Veterano A":
+            cola_activa = self.cola_va
+        else:
+            cola_activa = self.cola_vb
+
+        if len(cola_activa) > 0:
+            siguiente = cola_activa.pop(0) # Saca al primero (FIFO)
             siguiente.estado = f"Siendo Atendido por {peluquero.nombre}"
             
-            # El Simulador calcula el tiempo de atención y se lo informa al peluquero
             rnd_atencion = round(random.random(), 2)
             if peluquero.nombre == "Aprendiz":
                 tiempo_at = self.ap_a + rnd_atencion * (self.ap_b - self.ap_a)
@@ -264,9 +289,9 @@ class Simulador:
     def registrar_fila(self):
         p_lleg = round(self.prox_llegada, 2) if self.prox_llegada != float('inf') else "-"
         
-        c_ap = sum(1 for c in self.cola if c.preferencia == "Aprendiz")
-        c_va = sum(1 for c in self.cola if c.preferencia == "Veterano A")
-        c_vb = sum(1 for c in self.cola if c.preferencia == "Veterano B")
+        c_ap = len(self.cola_ap)
+        c_va = len(self.cola_va)
+        c_vb = len(self.cola_vb)
 
         cli_ap = self.aprendiz.cliente_actual.id_cliente if self.aprendiz.cliente_actual else "-"
         cli_va = self.veterano_a.cliente_actual.id_cliente if self.veterano_a.cliente_actual else "-"
