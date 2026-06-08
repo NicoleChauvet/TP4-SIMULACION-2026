@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador · Peluquería Centro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <header>
+        <div class="header-inner">
+            <div class="logo">
+                <span class="logo-icon">✂</span>
+                <div>
+                    <div class="logo-title">Peluquería Centro</div>
+                    <div class="logo-sub">Simulador de Colas · Grupo 15</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="params-panel">
+            <div class="panel-header">
+                <span class="panel-tag">01</span>
+                <h2>Parámetros de entrada</h2>
+            </div>
+            
+            <h3 class="section-subtitle">Configuración General</h3>
+            <div class="form-grid">
+                <div class="field-group">
+                    <label for="X"><span class="field-key">X</span> Tiempo Máx (min)</label>
+                    <input type="number" id="X" placeholder="Ej: 600" min="0" title="Condición de corte exacta para la simulación" />
+                </div>
+                <div class="field-group">
+                    <label for="i"><span class="field-key">i</span> Iteraciones visibles</label>
+                    <input type="number" id="i" placeholder="Ej: 100" min="0"/>
+                </div>
+                <div class="field-group">
+                    <label for="j"><span class="field-key">j</span> Mostrar desde min</label>
+                    <input type="number" id="j" placeholder="Ej: 0" min="0"/>
+                </div>
+            </div>
+
+            <h3 class="section-subtitle">Tiempos (Distribución Uniforme A y B en min)</h3>
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Llegada Clientes</label>
+                    <div class="input-row">
+                        <input type="number" id="llegA" value="2" min="0" step="0.1" title="A">
+                        <input type="number" id="llegB" value="12" min="0" step="0.1" title="B">
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Atención Aprendiz</label>
+                    <div class="input-row">
+                        <input type="number" id="apA" value="20" min="0" step="0.1">
+                        <input type="number" id="apB" value="30" min="0" step="0.1">
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Atención Veterano A</label>
+                    <div class="input-row">
+                        <input type="number" id="vaA" value="11" min="0" step="0.1">
+                        <input type="number" id="vaB" value="13" min="0" step="0.1">
+                    </div>
+                </div>
+                <div class="field-group">
+                    <label>Atención Veterano B</label>
+                    <div class="input-row">
+                        <input type="number" id="vbA" value="12" min="0" step="0.1">
+                        <input type="number" id="vbB" value="18" min="0" step="0.1">
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="section-subtitle">Preferencias de Peluquero (%)</h3>
+            <div class="form-grid">
+                <div class="field-group">
+                    <label>Probabilidad Aprendiz</label>
+                    <input type="number" id="probAp" value="15" min="0" max="100"/>
+                </div>
+                <div class="field-group">
+                    <label>Probabilidad Veterano A</label>
+                    <input type="number" id="probVa" value="45" min="0" max="100"/>
+                </div>
+                <div class="field-group">
+                    <label>Probabilidad Veterano B</label>
+                    <input type="number" id="probVb" value="40" min="0" disabled title="Calculado automáticamente"/>
+                </div>
+            </div>
+
+            <button class="btn-primary" id="btnSimular" onclick="ejecutarSimulacion()">▶ Ejecutar simulación</button>
+        </section>
+
+        <div class="spinner-wrap" id="spinnerWrap" style="display:none">
+            <div class="spinner"></div>
+            <p>Procesando vector de estados...</p>
+        </div>
+        <div class="error-box" id="errorBox" style="display:none"><span id="errorMsg"></span></div>
+
+        <section class="results-panel" id="resultsPanel" style="display:none">
+            <div class="results-header">
+                <div class="panel-header" style="margin-bottom:0">
+                    <span class="panel-tag">02</span>
+                    <h2>Vector de Estado</h2>
+                </div>
+            </div>
+            <div class="results-meta" id="resultsMeta"></div>
+            <div class="table-wrapper">
+                <table id="tablaResultados">
+                    <thead id="tablaHead"></thead>
+                    <tbody id="tablaBody"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="results-panel" id="finalPanel" style="display:none;">
+            <div class="panel-header">
+                <span class="panel-tag">03</span>
+                <h2>Resultados Finales</h2>
+            </div>
+            <div class="final-answers">
+                <div class="answer-card">
+                    <strong>¿Cuál es el porcentaje de tiempo libre del aprendiz?</strong>
+                    <div class="answer-box" id="ansLibre">-</div>
+                </div>
+                <div class="answer-card">
+                    <strong>¿Qué cantidad de sillas son necesarias para que en ningún momento se encuentre un cliente de pie?</strong>
+                    <div class="answer-box" id="ansSillas">-</div>
+                </div>
+                <div class="answer-card">
+                    <strong>¿Cuál es la prob. de que un día cierre la peluquería y queden 3 o más personas esperando?</strong>
+                    <div class="answer-box" id="ansProb">-</div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
