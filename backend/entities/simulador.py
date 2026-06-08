@@ -14,7 +14,7 @@ COLUMNAS = [
 
 class Simulador:
     # =========================================================
-    # 1. INICIALIZACIÓN DE LA SIMULACIÓN
+    # INICIALIZACIÓN DE LA SIMULACIÓN
     # =========================================================
     def __init__(self, X, i, j, params):
         self.tiempo_maximo_simulacion = X
@@ -60,7 +60,7 @@ class Simulador:
         self.proximo_cierre = self.duracion_jornada
         self.evento_actual = "Inicio de Día"
         
-        # Variables exclusivas para guardar la "foto" visual de la fila (Sin truncar matemáticamente)
+        # Variables exclusivas para guardar la fila
         self.rnd_llegada_actual = None
         self.tiempo_llegada_actual = None
         self.rnd_preferencia_actual = None
@@ -70,7 +70,7 @@ class Simulador:
         self.contador_filas_mostradas = 0
 
     # =========================================================
-    # 2. MOTOR DE EVENTOS (El Bucle Principal)
+    # MOTOR DE EVENTOS 
     # =========================================================
     def ejecutar(self):
         self.inicializar_dia()
@@ -204,11 +204,11 @@ class Simulador:
         return self.filas_a_mostrar, COLUMNAS, metricas
 
     # =========================================================
-    # 3. FUNCIONES DE LÓGICA INTERNA
+    # FUNCIONES DE LÓGICA INTERNA
     # =========================================================
     def iniciar_atencion(self, peluquero, cliente):
         cliente.estado = f"Siendo Atendido por {peluquero.nombre}"
-        rnd_atencion = random.random() # Precisión completa
+        rnd_atencion = random.random()
         
         if peluquero.nombre == "Aprendiz":
             tiempo_atencion = self.ap_a + rnd_atencion * (self.ap_b - self.ap_a)
@@ -232,7 +232,7 @@ class Simulador:
         return min(tiempos_abandono) if tiempos_abandono else float('inf')
 
     # =========================================================
-    # 4. FUNCIONES DE FORMATO VISUAL Y EXPORTACIÓN
+    # FUNCIONES DE FORMATO VISUAL Y EXPORTACIÓN
     # =========================================================
     def inicializar_dia(self):
         self.reloj_dia = 0.0
