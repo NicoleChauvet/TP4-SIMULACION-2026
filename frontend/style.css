@@ -329,7 +329,7 @@ main {
     border-left: 1px solid var(--border);
 }
 
-/* ── Table Body & Row Interaction (Zoom) ───────────── */
+/* ── Table Body & Row Interaction ───────────── */
 #tablaBody tr {
     cursor: pointer;
 }
@@ -355,7 +355,7 @@ main {
     background-color: rgba(255, 255, 255, 0.05); 
 }
 
-/* Fila Fijada con Efecto Zoom */
+/* Fila Fijada */
 #tablaBody tr.selected-row td {
     background-color: rgba(232, 197, 71, 0.15) !important;
 }
@@ -452,25 +452,4 @@ main {
     background-color: rgba(232, 197, 71, 0.15) !important;
     border-color: var(--accent) !important;
 }
-}
-
-/* ESTILOS PARA LA FILA ESTÁTICA SELECCIONADA*/
-tbody tr {
-    cursor: pointer; /* Le pone la manito al pasar por encima */
-}
-
-/* Esta clase se activa con JS al hacer clic */
-.selected-row {
-    position: sticky !important;
-    top: 50px; /* Altura para que quede debajo del encabezado de la tabla */
-    background-color: #BA8E23 !important; /* Amarillo opaco/crema pastel, súper legible */
-    color: #000 !important;
-    z-index: 10 !important; /* Para que quede por encima de las otras filas */
-    font-weight: bold;
-    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.15);
-    outline: 2px solid #c8b997; /* Borde ocre sutil para enmarcar la fila */
-}
-
-.selected-row td {
-    background-color: inherit !important; /* Fuerza a que las celdas hereden el fondo opaco */
 }
