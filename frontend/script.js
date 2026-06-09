@@ -1,6 +1,7 @@
 // Se ajustaron los índices de columnas por la reubicación de Reloj Absoluto
 const COLUMNAS_TIEMPO = [2, 3, 7, 8, 13, 17, 21];
 
+// Validacion de probabilidad de los peluqueros
 document.getElementById('probAp').addEventListener('input', recalcProb);
 document.getElementById('probVa').addEventListener('input', recalcProb);
 
@@ -24,6 +25,7 @@ function recalcProb() {
     }
 }
 
+// Funcion que le da formato a la hora de las columnas de tiempo
 function formatTime(val) {
     if (val === '-' || val === null || val === undefined || val === '') return '-';
     const num = Number(val);
@@ -37,6 +39,7 @@ function formatTime(val) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
+// Funcion que maneja la seleccion de una fila en la tabla
 document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('tablaBody');
     tbody.addEventListener('click', function(e) {
@@ -175,6 +178,7 @@ function renderizarTabla(columnas, filas) {
     tbody.appendChild(fragment);
 }
 
+// Agregar la clase corrrespondiente segun el evento
 function claseEvento(ev) {
     if (ev.includes('Llegada')) return 'ev-llegada';
     if (ev.includes('Fin Atencion')) return 'ev-fin';
