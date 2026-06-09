@@ -43,6 +43,5 @@ def simular():
     except Exception as e:
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
 
-# ESTO NO SE BORRA: Es lo que levanta el servidor de tu página web
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

@@ -122,7 +122,7 @@ main {
     letter-spacing: -0.02em;
 }
 
-/* ── Forms & Inputs (Parte 1) ──────────────────────── */
+/* ── Forms & Inputs ──────────────────────── */
 .section-subtitle {
     font-family: var(--font-display);
     font-size: 18px; 
@@ -240,7 +240,7 @@ main {
     font-size: 16px;
 }
 
-/* ── Table Container (Parte 2) ─────────────────────── */
+/* ── Table Container ─────────────────────── */
 .results-header {
     display: flex;
     align-items: flex-start;
@@ -376,7 +376,7 @@ main {
 .table-wrapper::-webkit-scrollbar-thumb:hover { background: #3a4157; }
 .table-wrapper::-webkit-scrollbar-corner { background: var(--bg2); }
 
-/* ── Final Answers (Parte 3) ───────────────────────── */
+/* ── Final Answers ───────────────────────── */
 #final-panel {
     margin-top: 15px;
 }
@@ -429,7 +429,7 @@ main {
 
 /* ── Diseño Específico para la Última Fila (Fin de Simulación) ── */
 #tablaBody tr.last-simulation-row td {
-    background-color: rgba(103, 226, 165, 0.08); /* Fondo verde suave para resaltar el final */
+    background-color: rgba(103, 226, 165, 0.08);
     border-top: 1px dashed var(--green);
     border-bottom: 1px dashed var(--green);
     color: var(--text);
