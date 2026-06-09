@@ -21,7 +21,7 @@ class Simulador:
         self.cantidad_iteraciones_mostrar = i
         self.minuto_inicio_mostrar = j
 
-        # Tiempos del sistema (Límites A y B explícitos)
+        # Distribuciones uniformes para llegadas y atenciones
         self.llegada_a = params.get('lleg_a', 2.0)
         self.llegada_b = params.get('lleg_b', 12.0)
         self.ap_a = params.get('ap_a', 20.0)
@@ -31,41 +31,47 @@ class Simulador:
         self.vb_a = params.get('vb_a', 12.0)
         self.vb_b = params.get('vb_b', 18.0)
         
+        # Calculo probabilidades 
         self.prob_aprendiz = params.get('prob_ap', 15.0) / 100.0
         self.prob_vet_a = params.get('prob_va', 45.0) / 100.0
+        self.prob_vet_b = 1.0 - self.prob_aprendiz - self.prob_vet_a
 
+        # Valores fijos de la simulación
         self.duracion_jornada = 480.0
         self.tolerancia_espera = 30.0
 
+        # Servidores instanciados
         self.aprendiz = Peluquero("Aprendiz")
         self.veterano_a = Peluquero("Veterano A")
         self.veterano_b = Peluquero("Veterano B")
         self.peluqueros = [self.aprendiz, self.veterano_a, self.veterano_b]
         
+        # Diccionario de colas por peluquero
         self.colas = {"Aprendiz": [], "Veterano A": [], "Veterano B": []}
 
-        # Relojes y contadores
+        # Inicializa variables de control 
         self.reloj_dia = 0.0
         self.reloj_absoluto = 0.0
         self.dia_actual = 1
         self.iteracion_actual = 1
         self.id_cliente_global = 1
 
+        # Variables para métricas
         self.acumulador_tiempo_libre_aprendiz = 0.0
         self.maximo_sillas_usadas = 0
         self.dias_con_cola_larga = 0
         self.cierres_totales = 0
 
+        # Inicialización de eventos futuros
         self.proxima_llegada = 0.0
         self.proximo_cierre = self.duracion_jornada
         self.evento_actual = "Inicio de Día"
-        
-        # Variables exclusivas para guardar la fila
         self.rnd_llegada_actual = None
         self.tiempo_llegada_actual = None
         self.rnd_preferencia_actual = None
         self.preferencia_actual = None
         
+        # Variables exclusivas para guardar la fila
         self.filas_a_mostrar = []
         self.contador_filas_mostradas = 0
 
@@ -80,6 +86,7 @@ class Simulador:
 
         # Condición de corte global
         while self.reloj_absoluto <= self.tiempo_maximo_simulacion and self.iteracion_actual <= 100000:
+            # Reloj del dia actual 
             reloj_previo = self.reloj_dia
 
             # Agrupa tiempos futuros para buscar el mínimo
@@ -93,10 +100,12 @@ class Simulador:
             }
 
             tiempo_minimo = min(eventos.values())
+
+            # Calcula si hay gente en cola y si los peluqueros estan libres
             total_en_colas = sum(len(c) for c in self.colas.values())
             todos_libres = all(p.estado == 'Libre' for p in self.peluqueros)
 
-            # Verifica si el local terminó su jornada
+            # Verifica si el local terminó su jornada completa
             if tiempo_minimo == float('inf') or (self.reloj_dia >= self.duracion_jornada and total_en_colas == 0 and todos_libres):
                 proximo_evento = 'Cierre Peluquería'
                 avance_reloj = 0
@@ -113,16 +122,19 @@ class Simulador:
                 self.evaluar_guardado_fila(forzar_guardado=True)
                 break
 
+            # Actualiza el evento actual y avanza los relojes (Ejecuta el salto de tiempo)
             self.evento_actual = proximo_evento
             if self.evento_actual != 'Cierre Peluquería':
                 self.reloj_dia = tiempo_minimo
-            
             self.reloj_absoluto += avance_reloj
+
+            # Acumula tiempo libre del aprendiz
             if self.aprendiz.estado == "Libre":
                 self.acumulador_tiempo_libre_aprendiz += avance_reloj
 
             # === PROCESAMIENTO DE EVENTOS ===
 
+            # EVENTO LLEGADA DE CLIENTE
             if self.evento_actual == 'Llegada Cliente':
                 if self.reloj_dia < self.duracion_jornada:
                     rnd_llegada = random.random() 
@@ -132,8 +144,10 @@ class Simulador:
                     self.rnd_llegada_actual = rnd_llegada
                     self.tiempo_llegada_actual = tiempo_llegada
                 else:
+                    # No se generan nuevas llegadas si ya cerró la recepción
                     self.proxima_llegada = float('inf')
 
+                # Determina la preferencia
                 rnd_preferencia = random.random()
                 if rnd_preferencia < self.prob_aprendiz:
                     preferencia = "Aprendiz"
@@ -142,33 +156,37 @@ class Simulador:
                 else:
                     preferencia = "Veterano B"
 
+                # Crea el nuevo cliente
                 nuevo_cliente = Cliente(self.id_cliente_global, preferencia)
                 self.id_cliente_global += 1
+                # Guarda la preferencia y el RND para la tabla
                 self.rnd_preferencia_actual = rnd_preferencia
                 self.preferencia_actual = preferencia
 
+                # Inicia la atención o se va a la cola 
                 peluquero_asignado = next(p for p in self.peluqueros if p.nombre == preferencia)
-                
                 if peluquero_asignado.estado == "Libre":
                     self.iniciar_atencion(peluquero_asignado, nuevo_cliente)
                 else:
                     nuevo_cliente.estado = f"En Cola {preferencia}"
                     nuevo_cliente.hora_llegada_cola = self.reloj_dia
                     self.colas[preferencia].append(nuevo_cliente) 
-                    
                     self.maximo_sillas_usadas = max(self.maximo_sillas_usadas, sum(len(c) for c in self.colas.values()))
 
+            # EVENTO FIN DE ATENCIÓN
             elif self.evento_actual.startswith('Fin Atencion'):
                 nombre_peluquero = self.evento_actual.replace('Fin Atencion ', '')
                 peluquero_terminado = next(p for p in self.peluqueros if p.nombre == nombre_peluquero)
                 self.procesar_fin_atencion(peluquero_terminado)
 
+            # EVENTO ABANDONO
             elif self.evento_actual == 'Abandono':
                 for cola in self.colas.values():
                     if cola and abs((cola[0].hora_llegada_cola + self.tolerancia_espera) - self.reloj_dia) < 0.001:
                         cola.pop(0)
                         break 
 
+            # EVENTO CIERRE DE RECEPCIÓN
             elif self.evento_actual == 'Cierre Recepcion':
                 if sum(len(c) for c in self.colas.values()) >= 3:
                     self.dias_con_cola_larga += 1
@@ -176,6 +194,7 @@ class Simulador:
                 self.proxima_llegada = float('inf')
                 self.proximo_cierre = float('inf')
 
+            # EVENTO CIERRE DE PELUQUERÍA
             elif self.evento_actual == 'Cierre Peluquería':
                 self.evaluar_guardado_fila()
                 self.dia_actual += 1
@@ -187,6 +206,7 @@ class Simulador:
                 self.limpiar_variables_de_fila()
                 continue
 
+            # Guardado de fila después del procesamiento del evento
             self.evaluar_guardado_fila()
             self.iteracion_actual += 1
             self.limpiar_variables_de_fila()
@@ -207,6 +227,7 @@ class Simulador:
     # FUNCIONES DE LÓGICA INTERNA
     # =========================================================
     def iniciar_atencion(self, peluquero, cliente):
+        # Cambio de estado 
         cliente.estado = f"Siendo Atendido por {peluquero.nombre}"
         rnd_atencion = random.random()
         
@@ -216,7 +237,7 @@ class Simulador:
             tiempo_atencion = self.va_a + rnd_atencion * (self.va_b - self.va_a)
         else:
             tiempo_atencion = self.vb_a + rnd_atencion * (self.vb_b - self.vb_a)
-            
+
         peluquero.ocupar(cliente, self.reloj_dia + tiempo_atencion)
 
     def procesar_fin_atencion(self, peluquero):
@@ -231,21 +252,22 @@ class Simulador:
         tiempos_abandono = [cola[0].hora_llegada_cola + self.tolerancia_espera for cola in self.colas.values() if cola]
         return min(tiempos_abandono) if tiempos_abandono else float('inf')
 
-    # =========================================================
-    # FUNCIONES DE FORMATO VISUAL Y EXPORTACIÓN
-    # =========================================================
     def inicializar_dia(self):
         self.reloj_dia = 0.0
         for cola in self.colas.values(): cola.clear()
         for p in self.peluqueros: p.liberar()
-
         rnd_llegada = random.random()
         tiempo_llegada = self.llegada_a + rnd_llegada * (self.llegada_b - self.llegada_a)
-        
         self.proxima_llegada = tiempo_llegada
         self.proximo_cierre = self.duracion_jornada
+
+        # Guarda el número original para la tabla
         self.rnd_llegada_actual = rnd_llegada
         self.tiempo_llegada_actual = tiempo_llegada
+
+    # =========================================================
+    # FUNCIONES DE FORMATO VISUAL Y EXPORTACIÓN
+    # =========================================================
 
     def evaluar_guardado_fila(self, forzar_guardado=False):
         if forzar_guardado or (self.reloj_absoluto >= self.minuto_inicio_mostrar and self.contador_filas_mostradas < self.cantidad_iteraciones_mostrar):
@@ -254,7 +276,7 @@ class Simulador:
                 self.contador_filas_mostradas += 1
 
     def limpiar_variables_de_fila(self):
-        # Limpia los datos temporales de la fila para que no se arrastren en el Excel
+        # Limpia los datos temporales de la fila
         self.rnd_llegada_actual = None
         self.tiempo_llegada_actual = None
         self.rnd_preferencia_actual = None
