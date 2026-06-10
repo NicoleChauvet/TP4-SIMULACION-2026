@@ -309,6 +309,24 @@ main {
 .col-group-5 { background: rgba(179, 121, 224, 0.08); color: var(--purple); }
 .col-group-6 { background: rgba(224, 92, 92, 0.08); color: var(--red); }
 .col-group-7 { background: rgba(255,255,255,0.03); color: var(--text-muted); }
+.col-group-clientes { background: rgba(224, 92, 92, 0.08); color: var(--red); }
+
+/* Encabezados de columnas de clientes */
+.th-cliente {
+    color: var(--red) !important;
+    border-left: 1px solid rgba(224, 92, 92, 0.2) !important;
+}
+.th-abandono {
+    color: var(--accent) !important;
+    border-left: 1px solid rgba(232, 197, 71, 0.2) !important;
+}
+
+/* Celdas de estado de clientes */
+.cli-siendo-atendido { color: var(--green)      !important; font-weight: 600; }
+.cli-en-cola         { color: var(--light-blue)  !important; }
+.cli-atendido        { color: var(--text-sec)    !important; }
+.cli-abandono        { color: var(--red)         !important; }
+.cli-hora-abandono   { color: var(--accent)      !important; font-style: italic; }
 
 /* Encabezados de Columnas Inferiores */
 #tablaHead tr.col-row th {

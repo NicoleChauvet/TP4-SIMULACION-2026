@@ -33,12 +33,13 @@ def simular():
 
         # Creamos el simulador y lo ejecutamos
         simulador = Simulador(X, i, j, params)
-        filas, columnas, metricas = simulador.ejecutar()
+        filas, columnas, metricas, clientes_por_fila = simulador.ejecutar()
 
         return jsonify({
             'columnas': columnas,
             'filas': filas,
-            'metricas': metricas
+            'metricas': metricas,
+            'clientes_por_fila': clientes_por_fila
         })
     except Exception as e:
         return jsonify({'error': f'Error interno: {str(e)}'}), 500
