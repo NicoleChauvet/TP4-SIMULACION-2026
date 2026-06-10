@@ -1,7 +1,5 @@
-// Se ajustaron los índices de columnas por la reubicación de Reloj Absoluto
 const COLUMNAS_TIEMPO = [2, 3, 7, 8, 13, 17, 21];
 
-// Validacion de probabilidad de los peluqueros
 document.getElementById('probAp').addEventListener('input', recalcProb);
 document.getElementById('probVa').addEventListener('input', recalcProb);
 
@@ -11,7 +9,6 @@ function recalcProb() {
     const vb = 100 - ap - va;
 
     if (vb < 0) {
-        // Revertir el último campo editado al máximo posible
         const apInput = document.getElementById('probAp');
         const vaInput = document.getElementById('probVa');
         if (document.activeElement === apInput) {
@@ -25,7 +22,6 @@ function recalcProb() {
     }
 }
 
-// Funcion que le da formato a la hora de las columnas de tiempo
 function formatTime(val) {
     if (val === '-' || val === null || val === undefined || val === '') return '-';
     const num = Number(val);
@@ -39,12 +35,12 @@ function formatTime(val) {
     return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// Funcion que maneja la seleccion de una fila en la tabla
 document.addEventListener('DOMContentLoaded', () => {
     const tbody = document.getElementById('tablaBody');
     tbody.addEventListener('click', function(e) {
         const tr = e.target.closest('tr');
         if (!tr) return;
+        
         const currentSelected = tbody.querySelector('.selected-row');
         if (currentSelected && currentSelected !== tr) {
             currentSelected.classList.remove('selected-row');
@@ -77,10 +73,10 @@ async function ejecutarSimulacion() {
     }
 
     const pares = [
-    { a: params.lleg_a, b: params.lleg_b, nombre: 'Llegada Clientes' },
-    { a: params.ap_a,   b: params.ap_b,   nombre: 'Atención Aprendiz' },
-    { a: params.va_a,   b: params.va_b,   nombre: 'Atención Veterano A' },
-    { a: params.vb_a,   b: params.vb_b,   nombre: 'Atención Veterano B' },
+        { a: params.lleg_a, b: params.lleg_b, nombre: 'Llegada Clientes' },
+        { a: params.ap_a,   b: params.ap_b,   nombre: 'Atención Aprendiz' },
+        { a: params.va_a,   b: params.va_b,   nombre: 'Atención Veterano A' },
+        { a: params.vb_a,   b: params.vb_b,   nombre: 'Atención Veterano B' },
     ];
 
     for (const par of pares) {
@@ -93,7 +89,7 @@ async function ejecutarSimulacion() {
     const camposNumericos = ['X', 'i', 'j', 'llegA', 'llegB', 'apA', 'apB', 'vaA', 'vaB', 'vbA', 'vbB', 'probAp', 'probVa'];
     for (const id of camposNumericos) {
         if (Number(document.getElementById(id).value) < 0) {
-            mostrarError(`Ningun campo puede ser negativo.`);
+            mostrarError(`Ningún campo puede ser negativo.`);
             return;
         }
     }
@@ -116,11 +112,11 @@ async function ejecutarSimulacion() {
             return;
         }
 
-        renderizarTabla(data.columnas, data.filas);
+        renderizarTabla(data.columnas, data.filas, data.metricas.max_clientes_mostrados);
         
-        document.getElementById('ansLibre').textContent = `${data.metricas.pct_libre_aprendiz}%`;
+        document.getElementById('ansLibre').textContent = `${data.metricas.pct_libre_aprendiz}`; 
         document.getElementById('ansSillas').textContent = `${data.metricas.max_sillas}`;
-        document.getElementById('ansProb').textContent = `${data.metricas.prob_cola_tres.toFixed(2)}`;
+        document.getElementById('ansProb').textContent = `${data.metricas.prob_cola_tres}`; 
         document.getElementById('spinnerWrap').style.display = 'none';
         document.getElementById('resultsMeta').innerHTML = `Mostrando tramo solicitado del vector de estados (<b>${data.filas.length}</b> filas generadas).`;
         document.getElementById('resultsPanel').style.display = 'block';
@@ -131,22 +127,29 @@ async function ejecutarSimulacion() {
     }
 }
 
-function renderizarTabla(columnas, filas) {
+function renderizarTabla(columnas, filas, maxClientes) {
     const thead = document.getElementById('tablaHead');
     const tbody = document.getElementById('tablaBody');
     thead.innerHTML = ''; tbody.innerHTML = '';
 
-    thead.innerHTML = `
+    let theadHTML = `
         <tr class="group-row">
             <th colspan="6" class="col-group-1">General</th>
             <th colspan="5" class="col-group-2">Llegada y Asignación</th>
             <th colspan="4" class="col-group-3">Peluquero: Aprendiz</th>
             <th colspan="4" class="col-group-4">Peluquero: Veterano A</th>
             <th colspan="4" class="col-group-5">Peluquero: Veterano B</th>
-            <th colspan="3" class="col-group-7">Métricas Acumuladas</th>
-        </tr>
+            <th colspan="3" class="col-group-7">Métricas</th>
     `;
+    
+    // El secreto: usamos rowspan="2" para que se expanda y no queden espacios vacíos debajo
+    if (maxClientes > 0) {
+        theadHTML += `<th colspan="${maxClientes}" rowspan="2" style="background-color: #1a252f; color: #ffffff; border-left: 2px solid #34495e; vertical-align: middle; text-align: center;">Clientes en Sistema (Activos)</th>`;
+    }
+    theadHTML += `</tr>`;
+    thead.innerHTML = theadHTML;
 
+    // Solo se generan los <th> inferiores para las columnas fijas
     const trHead = document.createElement('tr');
     trHead.className = "col-row";
     columnas.forEach(col => {
@@ -169,7 +172,6 @@ function renderizarTabla(columnas, filas) {
             }
 
             td.textContent = valorAMostrar;
-            // Índice del evento ahora es el 4 (por la inserción del Reloj Absoluto en el 3)
             if (idx === 4) td.className = claseEvento(String(celda)); 
             tr.appendChild(td);
         });
@@ -178,7 +180,6 @@ function renderizarTabla(columnas, filas) {
     tbody.appendChild(fragment);
 }
 
-// Agregar la clase corrrespondiente segun el evento
 function claseEvento(ev) {
     if (ev.includes('Llegada')) return 'ev-llegada';
     if (ev.includes('Fin Atencion')) return 'ev-fin';
